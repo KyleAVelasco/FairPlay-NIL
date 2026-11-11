@@ -607,9 +607,25 @@ persist(); route();
 try{ if("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); } }catch(e){}
 let deferred = null;
 const standalone = (()=>{ try{ return matchMedia("(display-mode: standalone)").matches || navigator.standalone; }catch(e){ return false; } })();
-window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("install").hidden=false; });
-$("installBtn").addEventListener("click",async()=>{ if(deferred){ deferred.prompt(); await deferred.userChoice; deferred=null; $("install").hidden=true; } });
+/* Friendly install pop-up: waits a few seconds, and "Not now" hides it for two weeks. */
+const SNOOZE_KEY = "fairplay.installSnooze";
+const snoozed = ()=>{ try{ return Date.now() < Number(localStorage.getItem(SNOOZE_KEY)||0); }catch(e){ return false; } };
+function hidePop(snooze){
+  $("install").hidden = true;
+  if(snooze){ try{ localStorage.setItem(SNOOZE_KEY, String(Date.now()+14*864e5)); }catch(e){} }
+}
+function showPop(){ if(standalone || snoozed()) return; setTimeout(()=>{ $("install").hidden = false; }, 4000); }
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("installTitle").textContent = "Add FairPlayNIL to this device"; showPop(); });
+window.addEventListener("appinstalled",()=>hidePop(false));
+$("installBtn").addEventListener("click",async()=>{
+  if(deferred){ deferred.prompt(); const c = await deferred.userChoice; deferred=null; hidePop(!c || c.outcome!=="accepted"); }
+  else hidePop(true);
+});
+$("installLater").addEventListener("click",()=>hidePop(true));
+$("installClose").addEventListener("click",()=>hidePop(true));
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !$("install").hidden) hidePop(true); });
 if(!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent) && location.protocol==="https:"){
-  $("installText").textContent = "To install FairPlayNIL, tap Share, then Add to Home Screen.";
-  $("installBtn").hidden = true; $("install").hidden = false;
+  $("installText").textContent = "Add it to your home screen so it's one tap away the next time a brand sends you a deal. Your saved reviews stay on your phone.";
+  $("iosSteps").hidden = false; $("installBtn").textContent = "Got it";
+  showPop();
 }

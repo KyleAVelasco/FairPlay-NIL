@@ -1,6 +1,6 @@
 // FairPlayNIL service worker: caches the app so it opens offline.
-const CACHE = 'fairplay-v5';
-const ASSETS = ['./', './index.html', './app.js', './terms.html', './og-image.png', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './fonts/public-sans.woff2', './vendor/pdf.min.js', './vendor/pdf.worker.min.js', './vendor/mammoth.browser.min.js'];
+const CACHE = 'fairplay-v7';
+const ASSETS = ['./', './index.html', './app.js', './terms.html', './deals.html', './og-image.png', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './fonts/public-sans.woff2', './vendor/pdf.min.js', './vendor/pdf.worker.min.js', './vendor/mammoth.browser.min.js'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

@@ -11,6 +11,7 @@ The report shows the Deal Score, key terms, every flagged clause with what to as
 - `index.html` — the page (markup and styles)
 - `app.js` — the app script and red-flag rules (kept separate so the security policy can block inline scripts)
 - `terms.html` — Terms & Privacy, linked from every page footer
+- `deals.html` — "Find NIL deals" guide, linked from the header on every page
 - `og-image.png` — the 1200×630 image shown when the link is shared
 - `vendor/` — PDF.js 3.11 and Mammoth 1.8, which read PDF and Word files on the device
 - `fonts/` — Public Sans, the interface typeface
@@ -37,5 +38,5 @@ Score = 100 × e^(−points/110), kept between 1 and 98.
 ## Publishing on GitHub Pages
 1. Create a public repository (for example `FairPlayNIL`) and upload everything in this folder except `originals/`.
 2. In the repository: Settings → Pages → Source: "Deploy from a branch", branch `main`, folder `/ (root)`. The site appears at `https://<username>.github.io/FairPlayNIL/` after a minute or two, over HTTPS.
-3. Link previews: in `index.html`, change `og:image` from `og-image.png` to the full address (`https://<username>.github.io/FairPlayNIL/og-image.png`) and add `<meta property="og:url" content="https://<username>.github.io/FairPlayNIL/">`. LinkedIn ignores images given as a relative path. Check the result at linkedin.com/post-inspector.
+3. Live at https://kyleavelasco.github.io/FairPlay-NIL/ (repository: github.com/kyleavelasco/FairPlay-NIL). Link-preview tags already use full addresses; check them at linkedin.com/post-inspector.
 4. After any change to the files, bump `CACHE` in `sw.js` (for example `fairplay-v6`) so installed copies pick up the new version.
