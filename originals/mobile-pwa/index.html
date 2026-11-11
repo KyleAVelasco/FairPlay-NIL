@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FairPlay — NIL Contract Analyzer</title>
+<meta name="description" content="Paste an NIL contract and get a Deal Score, a plain-English summary and clause-by-clause flags.">
+<meta name="theme-color" content="#0b1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FairPlay">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1a2e; --bg2:#10243f; --card:#142c4c; --line:#22406a;
+    --text:#eef3fa; --muted:#9db0c9; --accent:#2ee59d; --accent-ink:#06261a;
+    --high:#ff5d6c; --med:#ffb547; --low:#5cc8ff; --good:#2ee59d;
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);min-height:100vh}
+  .wrap{max-width:560px;margin:0 auto;padding:18px 16px 40px}
+  header{display:flex;align-items:center;gap:10px;padding:6px 0 18px}
+  .logo{width:36px;height:36px;border-radius:10px;flex:none}
+  .brand{font-weight:800;font-size:22px;letter-spacing:-.02em}
+  .brand span{color:var(--accent)}
+  .tag{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  h1{font-size:26px;line-height:1.15;letter-spacing:-.02em;margin:4px 0 8px}
+  p.lead{color:var(--muted);margin:0 0 18px;font-size:15px;line-height:1.5}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+  textarea{width:100%;min-height:220px;resize:vertical;background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;font:14px/1.5 Inter,system-ui,sans-serif}
+  textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  button{font:600 15px Inter,system-ui,sans-serif;border-radius:12px;padding:13px 16px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+  button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);flex:1}
+  button:active{transform:scale(.98)}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px}
+  #results{display:none;margin-top:20px}
+  .score-card{display:flex;align-items:center;gap:18px}
+  .ring{--p:0;--c:var(--good);width:108px;height:108px;border-radius:50%;flex:none;display:grid;place-items:center;
+    background:conic-gradient(var(--c) calc(var(--p)*1%),#203b60 0)}
+  .ring>div{width:86px;height:86px;border-radius:50%;background:var(--card);display:grid;place-items:center;text-align:center}
+  .ring b{font-size:32px;line-height:1;font-weight:800}
+  .ring small{display:block;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.08em;margin-top:2px}
+  .verdict{font-size:19px;font-weight:700;margin:0 0 4px}
+  .counts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .pill{font-size:12px;font-weight:600;border-radius:999px;padding:4px 9px;background:#0f223b;border:1px solid var(--line)}
+  .pill i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:0}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:24px 0 10px}
+  .summary li{margin:0 0 8px;line-height:1.5;font-size:15px}
+  .summary ul{margin:0;padding-left:18px}
+  .clause{border-left:4px solid var(--line);margin-bottom:10px}
+  .clause.high{border-left-color:var(--high)} .clause.medium{border-left-color:var(--med)}
+  .clause.low{border-left-color:var(--low)} .clause.good{border-left-color:var(--good)}
+  .ctop{display:flex;align-items:center;gap:8px;cursor:pointer}
+  .ctitle{font-weight:700;font-size:15px;flex:1}
+  .sev{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-radius:6px;padding:3px 7px}
+  .sev.high{background:rgba(255,93,108,.15);color:var(--high)} .sev.medium{background:rgba(255,181,71,.15);color:var(--med)}
+  .sev.low{background:rgba(92,200,255,.15);color:var(--low)} .sev.good{background:rgba(46,229,157,.15);color:var(--good)}
+  .flag{margin-top:10px;font-size:14px;line-height:1.5}
+  .flag b{display:block;font-size:14px}
+  .flag .ask{color:var(--muted);font-size:13px;margin-top:3px}
+  .quote{display:none;margin-top:10px;font-size:13px;line-height:1.5;color:var(--muted);background:var(--bg2);border-radius:10px;padding:10px;white-space:pre-wrap}
+  .clause.open .quote{display:block}
+  .chev{color:var(--muted);transition:transform .2s;font-size:14px}
+  .clause.open .chev{transform:rotate(90deg)}
+  .disclaimer{font-size:12px;color:var(--muted);line-height:1.5;margin-top:24px;text-align:center}
+  #install{display:none;margin-bottom:16px;align-items:center;gap:10px}
+  #install.show{display:flex}
+  #install div{flex:1;font-size:14px;line-height:1.4}
+  #install button{padding:9px 14px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#2ee59d"/><path d="M20 46V18h24v7H28v6h13v7H28v8z" fill="#0b1a2e"/></svg>
+    <div class="brand">Fair<span>Play</span></div>
+    <div class="tag">NIL Contract Check</div>
+  </header>
+
+  <div id="install" class="card">
+    <div id="installText">Install FairPlay on your home screen.</div>
+    <button id="installBtn" class="primary" style="flex:none">Install</button>
+  </div>
+
+  <section id="input">
+    <h1>Know what you're signing.</h1>
+    <p class="lead">Paste an NIL deal below. FairPlay scores it, explains it in plain English and flags the clauses worth pushing back on.</p>
+    <div class="card">
+      <textarea id="contract" placeholder="Paste your NIL contract text here…"></textarea>
+      <div class="row">
+        <button class="primary" id="analyze">Analyze contract</button>
+        <button id="sample">Try a sample</button>
+      </div>
+      <div class="hint">Your contract stays on your phone. Nothing is uploaded.</div>
+    </div>
+  </section>
+
+  <section id="results">
+    <div class="card score-card">
+      <div class="ring" id="ring"><div><span><b id="score">0</b><small>DEAL SCORE</small></span></div></div>
+      <div>
+        <p class="verdict" id="verdict"></p>
+        <div style="color:var(--muted);font-size:14px" id="verdictSub"></div>
+        <div class="counts" id="counts"></div>
+      </div>
+    </div>
+
+    <h2>Plain-English summary</h2>
+    <div class="card summary"><ul id="summary"></ul></div>
+
+    <h2>Clause-by-clause</h2>
+    <div id="clauses"></div>
+
+    <div class="row"><button id="again" style="flex:1">Analyze another contract</button></div>
+    <p class="disclaimer">FairPlay gives an automated first read, not legal advice. Before signing, check the deal with your school's compliance office or an attorney.</p>
+  </section>
+</div>
+
+<script>
+const SAMPLE = `NAME, IMAGE AND LIKENESS ENDORSEMENT AGREEMENT
+
+1. Parties. This Agreement is entered into between Peak Fuel Beverage Co. ("Company") and the undersigned student-athlete ("Athlete").
+
+2. Term. This Agreement begins on the Effective Date and continues for twenty-four (24) months. The Agreement shall automatically renew for successive twelve (12) month periods unless either party gives written notice at least ninety (90) days before the end of the then-current term.
+
+3. Compensation. Company shall pay Athlete $2,500 per quarter, payable within sixty (60) days after the end of each quarter. Payments are contingent upon Company's satisfaction with Athlete's performance of the Services, as determined in Company's sole discretion.
+
+4. Services. Athlete shall publish no fewer than four (4) Instagram posts and two (2) TikTok videos per month featuring Company products, and shall make up to three (3) personal appearances per year at no additional cost.
+
+5. Exclusivity. During the Term and for twelve (12) months thereafter, Athlete shall not endorse, promote or appear on behalf of any beverage, sports nutrition or food company.
+
+6. License. Athlete grants Company an irrevocable, perpetual, worldwide license to use Athlete's name, image, likeness, voice and biographical information in any media now known or hereafter devised, including after termination of this Agreement.
+
+7. Morals Clause. Company may terminate this Agreement immediately if Athlete engages in any conduct that, in Company's sole opinion, brings Athlete or Company into public disrepute. Upon such termination Athlete shall repay all compensation received.
+
+8. Termination. Company may terminate this Agreement for convenience upon fifteen (15) days' written notice. Athlete may terminate only for Company's material breach that remains uncured for sixty (60) days.
+
+9. Agent. Athlete acknowledges that Company's affiliated agency, Peak Talent LLC, will represent Athlete and receive twenty-five percent (25%) of all compensation hereunder.
+
+10. Compliance. Athlete shall be solely responsible for disclosing this Agreement to Athlete's institution and for compliance with all NCAA, conference and institutional rules.
+
+11. Indemnification. Athlete shall indemnify and hold harmless Company from any and all claims arising out of this Agreement.
+
+12. Dispute Resolution. Any dispute shall be resolved by binding arbitration in Wilmington, Delaware, and Athlete waives any right to a jury trial or to participate in a class action. Athlete shall bear all costs of arbitration.
+
+13. Confidentiality. Athlete shall keep the terms of this Agreement strictly confidential and shall not disclose them to any third party.
+
+14. Assignment. Company may assign this Agreement to any affiliate or successor without Athlete's consent.`;
+
+/* ---------- Rules ----------
+   Each rule: test(text) -> match?, severity, title, why, ask.
+   Severity weights feed the Deal Score. */
+const W = {high:14, medium:7, low:3, good:-4};
+const RULES = [
+  {id:'perpetual', sev:'high', topic:'License', re:/\b(perpetual|irrevocable|in perpetuity|forever)\b/i,
+    t:'Rights to your image never end', why:'The company can keep using your name and likeness after the deal is over, possibly for the rest of your life.',
+    ask:'Limit the license to the contract term, plus a short sell-off period (e.g. 90 days).'},
+  {id:'post-term', sev:'medium', topic:'License', re:/after (the )?(termination|expiration)|survive (any )?termination/i, also:/(license|likeness|image)/i,
+    t:'Use continues after the deal ends', why:'Some rights keep running after the contract ends, often without more pay.',
+    ask:'Ask that use stop when the deal ends, or that you are paid for any later use.'},
+  {id:'any-media', sev:'low', topic:'License', re:/(any|all) media( now known or hereafter devised)?|worldwide/i,
+    t:'Very broad usage rights', why:'Your likeness can be used in any format, anywhere in the world.',
+    ask:'Narrow it to the specific channels and regions the campaign actually needs.'},
+  {id:'exclusive-post', sev:'high', topic:'Exclusivity', re:/(for|during)\s+(\w+\s+)?\(?\d*\)?\s*(months?|years?)\s+(thereafter|after)/i,
+    t:'Exclusivity lasts after the contract', why:'You would be blocked from deals in this category even after you stop being paid.',
+    ask:'End exclusivity when the contract (and the payments) end.'},
+  {id:'exclusive', sev:'medium', topic:'Exclusivity', re:/\bexclusiv|shall not (endorse|promote)|non-?compete/i,
+    t:'Exclusivity restriction', why:'You can\'t work with competitors. That is normal, but a broad category can cost you other deals.',
+    ask:'Define competitors narrowly (named brands or one product type), not a whole industry.'},
+  {id:'auto-renew', sev:'medium', topic:'Term', re:/automatic(ally)? renew|auto-?renew/i,
+    t:'Renews automatically', why:'The deal keeps going at the same pay unless someone cancels in time, and it is easy to miss the notice window.',
+    ask:'Remove auto-renewal, or require both sides to agree in writing to renew.'},
+  {id:'long-term', sev:'low', topic:'Term', re:/\b(24|36|48|twenty-four|thirty-six)\b[^.]{0,20}months|\b(two|three|four|[2-4])\s*\(?\d?\)?\s*years/i,
+    t:'Long contract', why:'A multi-year deal locks in today\'s price even if your profile grows.',
+    ask:'Keep it to one season, or add a pay increase for each year.'},
+  {id:'sole-discretion', sev:'high', topic:'Compensation', re:/sole (discretion|opinion|judgment)|satisfaction/i,
+    t:'The company decides on its own', why:'Phrases like "sole discretion" let the company decide alone whether you met the terms, which can be used to withhold pay or end the deal.',
+    ask:'Replace with objective standards, like a set number of posts delivered on time.'},
+  {id:'late-pay', sev:'medium', topic:'Compensation', re:/(within|net)\s+(sixty|ninety|60|90|forty-five|45)\b/i,
+    t:'Slow payment', why:'You may wait two months or more after doing the work to be paid.',
+    ask:'Ask for payment within 15–30 days, or part of it up front.'},
+  {id:'clawback', sev:'high', topic:'Compensation', re:/repay|refund (all|any) compensation|clawback|claw back|forfeit/i,
+    t:'You could have to pay money back', why:'Money you already earned could be taken back.',
+    ask:'Remove the repayment clause. At most, unpaid future payments should stop.'},
+  {id:'free-work', sev:'medium', topic:'Services', re:/at no additional (cost|charge)|without additional compensation/i,
+    t:'Extra work for no extra pay', why:'Appearances or content beyond the main deliverables are included for free.',
+    ask:'Set a per-appearance fee, or cap free extras at one.'},
+  {id:'heavy-deliv', sev:'low', topic:'Services', re:/no fewer than|minimum of|at least \w+ \(\d+\) (posts|videos)/i,
+    t:'Required posting quota', why:'Monthly content minimums take time during your season.',
+    ask:'Make sure the quota fits your training and class schedule, with flexibility during competition.'},
+  {id:'morals-vague', sev:'high', topic:'Morals Clause', re:/disrepute|moral(s)? clause|public (scandal|contempt|ridicule)/i,
+    t:'Vague morals clause', why:'A broad "disrepute" standard lets the company end the deal over almost anything.',
+    ask:'Limit it to specific conduct, like criminal charges, and require the standard to be "reasonable" instead of the company\'s opinion.'},
+  {id:'one-sided-term', sev:'high', topic:'Termination', re:/(company|brand|sponsor) may terminate[^.]*(convenience|any reason|without cause)/i,
+    t:'One-sided termination', why:'The company can walk away at any time, but you can\'t.',
+    ask:'Make termination rights mutual, or pay you a kill fee if they leave early.'},
+  {id:'agent-fee', sev:'high', topic:'Agent', re:/(\d{2})\s*%|(twenty|thirty|forty)[- ]\w*\s*percent/i, check:(m)=>{const n=m[1]?parseInt(m[1]):({twenty:20,thirty:30,forty:40})[m[2]?.toLowerCase()]||0;return n>=20},
+    t:'Agent fee is high', why:'Agent fees in NIL usually run 10–20%. A fee above that, especially to an agency tied to the brand, is a conflict of interest.',
+    ask:'Choose your own agent, or cap the fee at 10–15%.'},
+  {id:'affiliated', sev:'medium', topic:'Agent', re:/affiliated (agency|entity)|company's affiliate/i,
+    t:'Brand-affiliated representation', why:'An agent tied to the company is not fully on your side.',
+    ask:'Use independent representation.'},
+  {id:'compliance', sev:'low', topic:'Compliance', re:/solely responsible[^.]*(disclos|complian)|NCAA|institution/i,
+    t:'Compliance is on you', why:'You must report the deal to your school and stay eligible. Missing this can risk your eligibility.',
+    ask:'Report it to your compliance office before signing, and ask the company to help with disclosure.'},
+  {id:'indemnify', sev:'medium', topic:'Liability', re:/athlete shall indemnify|indemnify and hold harmless/i,
+    t:'You cover the company\'s legal costs', why:'If the company is sued over the campaign, you could owe them.',
+    ask:'Make indemnification mutual, and limit yours to your own misconduct.'},
+  {id:'arbitration', sev:'medium', topic:'Disputes', re:/binding arbitration|waives? (any )?right to (a )?jury|class action/i,
+    t:'You give up your right to go to court', why:'Disputes go to private arbitration, often far from you.',
+    ask:'Ask for arbitration in your home state, with the company paying the fees.'},
+  {id:'arb-costs', sev:'high', topic:'Disputes', re:/athlete shall bear (all )?costs|bear all costs of arbitration/i,
+    t:'You pay for disputes', why:'Paying arbitration costs can make it too expensive to challenge the company at all.',
+    ask:'The company should pay arbitration fees, or costs should be split.'},
+  {id:'confidential', sev:'low', topic:'Confidentiality', re:/strictly confidential|shall not disclose/i,
+    t:'Strict confidentiality', why:'You may not be able to show the contract to an agent, a lawyer or your school.',
+    ask:'Add exceptions for your advisors, family and school compliance office.'},
+  {id:'assign', sev:'low', topic:'Assignment', re:/may assign[^.]*without[^.]*consent/i,
+    t:'Deal can be transferred without asking you', why:'Your contract could end up with a company you never chose to work with.',
+    ask:'Require your written consent before any assignment.'},
+  {id:'mutual', sev:'good', topic:'Termination', re:/either party may terminate/i,
+    t:'Mutual termination right', why:'Both sides can exit, which is fair.', ask:''},
+  {id:'upfront', sev:'good', topic:'Compensation', re:/upon (signing|execution)|signing bonus|in advance/i,
+    t:'Some pay up front', why:'Money up front lowers your risk.', ask:''},
+];
+
+const $ = (s)=>document.querySelector(s);
+const esc = (s)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function splitClauses(text){
+  const parts = text.split(/\n(?=\s*(?:\d+\.|Section\s+\d+|[A-Z][A-Z \-]{3,}\.?\s*$))/).map(s=>s.trim()).filter(Boolean);
+  const chunks = parts.length>1 ? parts : text.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+  return chunks.filter(c=>c.length>25).map((c,i)=>{
+    const m = c.match(/^\s*(?:\d+\.|Section\s+\d+\.?)\s*([A-Z][A-Za-z ,&]{2,40}?)\./);
+    return {n:i+1, title: m? m[1].trim() : 'Clause '+(i+1), text:c};
+  });
+}
+
+function analyze(text){
+  const clauses = splitClauses(text);
+  const hits = [];
+  clauses.forEach(cl=>{
+    cl.flags = [];
+    RULES.forEach(r=>{
+      const m = cl.text.match(r.re);
+      if(!m) return;
+      if(r.also && !r.also.test(cl.text)) return;
+      if(r.check && !r.check(m)) return;
+      if(r.id==='exclusive' && cl.flags.some(f=>f.id==='exclusive-post')) return;
+      if(r.id==='post-term' && cl.flags.some(f=>f.id==='perpetual')) return;
+      if(r.id==='late-pay' && /within\s+(sixty|60)\s*\(?\d*\)?\s*days' (written )?notice/i.test(cl.text)) return;
+      cl.flags.push(r); hits.push(r);
+    });
+    const order = ['high','medium','low','good'];
+    cl.sev = cl.flags.length ? order.find(s=>cl.flags.some(f=>f.sev===s)) : null;
+  });
+  const penalty = hits.reduce((a,r)=>a+W[r.sev],0);
+  const score = Math.max(1, Math.min(100, Math.round(100*Math.exp(-penalty/110))));
+  return {clauses, hits, score};
+}
+
+function summarize(text, hits){
+  const out = [];
+  const money = text.match(/\$\s?[\d,]+(?:\.\d{2})?\s*(per|a|each|\/)\s*(quarter|month|year|post|week)/i);
+  const lump = text.match(/\$\s?[\d,]+(?:\.\d{2})?/);
+  const term = text.match(/(?:continues|term[^.]{0,40}?)\s+for\s+([\w-]+\s*\(?\d*\)?\s*(?:months?|years?))/i);
+  if(money) out.push(`<b>Pay:</b> ${esc(money[0])}.`);
+  else if(lump) out.push(`<b>Pay:</b> ${esc(lump[0])} mentioned in the contract.`);
+  else out.push(`<b>Pay:</b> No dollar amount found. Make sure compensation is spelled out.`);
+  if(term) out.push(`<b>Length:</b> ${esc(term[1].replace(/\s+/g,' '))}${hits.some(h=>h.id==='auto-renew')?', and it renews automatically':''}.`);
+  const del = text.match(/no fewer than[^.]+\./i);
+  if(del) out.push(`<b>Your work:</b> ${esc(del[0].replace(/^no fewer than/i,'At least').replace(/ featuring.*$/,'').replace(/\.$/,''))}.`);
+  const highs = hits.filter(h=>h.sev==='high');
+  if(highs.length) out.push(`<b>Biggest concerns:</b> ${highs.slice(0,3).map(h=>h.t.toLowerCase()).join('; ')}.`);
+  const fee = hits.find(h=>h.id==='agent-fee');
+  if(fee){ const p = text.match(/(\d{2})\s*%/); if(p) out.push(`<b>Take-home:</b> after a ${p[1]}% agent fee you keep about ${100-parseInt(p[1])}% of what the deal pays.`); }
+  if(!highs.length) out.push(`<b>Overall:</b> No major red flags found. Still review the clauses below.`);
+  return out;
+}
+
+function render(res, text){
+  const {score, hits, clauses} = res;
+  const color = score>=75?'var(--good)':score>=50?'var(--med)':'var(--high)';
+  const ring = $('#ring'); ring.style.setProperty('--c',color);
+  let p=0; const tick=()=>{p+=Math.max(1,(score-p)/8); if(p>score)p=score; ring.style.setProperty('--p',p); $('#score').textContent=Math.round(p); if(p<score)requestAnimationFrame(tick)}; tick();
+  $('#verdict').textContent = score>=75?'Fair deal':score>=50?'Negotiate first':'Don\'t sign as-is';
+  $('#verdictSub').textContent = score>=75?'Mostly standard terms.':score>=50?'Some terms need to change.':'Several terms work against you.';
+  const c = s=>hits.filter(h=>h.sev===s).length;
+  $('#counts').innerHTML = [['high','High'],['medium','Medium'],['low','Low']].map(([s,l])=>`<span class="pill"><i style="background:var(--${s==='medium'?'med':s})"></i>${c(s)} ${l}</span>`).join('');
+  $('#summary').innerHTML = summarize(text,hits).map(s=>`<li>${s}</li>`).join('');
+  const label = {high:'High risk',medium:'Medium',low:'Low',good:'Good'};
+  const sorted = [...clauses].sort((a,b)=>['high','medium','low','good',null].indexOf(a.sev)-['high','medium','low','good',null].indexOf(b.sev));
+  $('#clauses').innerHTML = sorted.map(cl=>{
+    const sev = cl.sev||'none';
+    const flags = cl.flags.length ? cl.flags.map(f=>`<div class="flag"><b>${f.sev==='good'?'✓':'⚑'} ${esc(f.t)}</b>${esc(f.why)}${f.ask?`<div class="ask">Ask for: ${esc(f.ask)}</div>`:''}</div>`).join('')
+      : `<div class="flag" style="color:var(--muted)">Nothing flagged in this clause.</div>`;
+    return `<div class="card clause ${sev}"><div class="ctop"><span class="ctitle">${cl.n}. ${esc(cl.title)}</span>${cl.sev?`<span class="sev ${sev}">${label[sev]}</span>`:''}<span class="chev">›</span></div>${flags}<div class="quote">${esc(cl.text)}</div></div>`;
+  }).join('');
+  document.querySelectorAll('.ctop').forEach(el=>el.onclick=()=>el.parentElement.classList.toggle('open'));
+  $('#results').style.display='block';
+  $('#results').scrollIntoView({behavior:'smooth'});
+}
+
+$('#sample').onclick=()=>{$('#contract').value=SAMPLE};
+$('#analyze').onclick=()=>{
+  const t=$('#contract').value.trim();
+  if(t.length<80){$('#contract').focus();$('#contract').placeholder='Paste a contract first, or tap "Try a sample".';return}
+  render(analyze(t),t);
+};
+$('#again').onclick=()=>{$('#results').style.display='none';$('#contract').value='';window.scrollTo({top:0,behavior:'smooth'})};
+
+/* ---------- PWA ---------- */
+try{ if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}) } }catch(e){}
+let deferred=null;
+const standalone = (()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone}catch(e){return false}})();
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#install').classList.add('show')});
+$('#installBtn').onclick=async()=>{ if(deferred){deferred.prompt();await deferred.userChoice;deferred=null;$('#install').classList.remove('show')} };
+if(!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent)){
+  $('#installText').innerHTML='Install FairPlay: tap <b>Share</b>, then <b>Add to Home Screen</b>.';
+  $('#installBtn').style.display='none'; $('#install').classList.add('show');
+}
+</script>
+</body>
+</html>
